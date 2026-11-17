@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Module 1: SQL Injection (Auth Bypass) — {{ course.project_title }}{% endblock %}
+
+{% block content %}
+<div class="mode-bar">
+  <div>
+    <div class="eyebrow">{{ member.label }} ({{ member.name }} / {{ member.roll_number }}) &bull; {{ member.category }}</div>
+    <h1 style="margin:0;">{{ member.variant }}</h1>
+  </div>
+  <div class="mode-pills">
+    <a href="/modules/sqli-auth?mode=vulnerable" class="mode-pill {% if mode == 'vulnerable' %}active-vuln{% endif %}">Vulnerable Mode</a>
+    <a href="/modules/sqli-auth?mode=secured" class="mode-pill {% if mode == 'secured' %}active-sec{% endif %}">Secured Mode</a>
+  </div>
+</div>
+
+<p style="color: var(--text-secondary); margin-top:0;">{{ member.summary }}</p>
+
+{% include "partials/module_tabs.html" %}
+
+<!-- Tab 1: Interactive Demo -->
+<div id="tab-demo" class="tab-panel active">
+  <div class="grid-2">
+    <div class="card">
+      <h3>Simulated Portal Login ({{ mode|upper }})</h3>
+      <div class="payload-chips">
+        {% for ex in example_payloads %}
+          <button type="button" class="payload-chip"
+            onclick='document.getElementById("sqli-user").value={{ ex.username|tojson }}; document.getElementById("sqli-pass").value={{ ex.password|tojson }};'>
+            {{ ex.label }}
+          </button>
+        {% endfor %}
+      </div>
+      <form method="post" action="/modules/sqli-auth/login">
+        <input type="hidden" name="mode" value="{{ mode }}" />
+        <div class="form-group">
+          <label for="sqli-user">Username / Payload</label>
+          <input type="text" id="sqli-user" name="username" value="{{ submitted_username }}" placeholder="e.g. admin' -- " required />
+        </div>
+        <div class="form-group">
+          <label for="sqli-pass">Password</label>
+          <input type="password" id="sqli-pass" name="password" value="anything" placeholder="Enter password or dummy text for bypass" required />
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button type="submit" class="btn btn-primary">Execute Login</button>
+          <button type="button" class="btn" onclick="labResetModule()">Reset Demo</button>
+        </div>
+      </form>
+      <p style="font-size:12px; color:var(--text-muted); margin-top:12px; margin-bottom:0;">
+        Simulated accounts in SQLite: <code>admin</code>, <code>alice</code> (<code>AlicePass!99</code>), <code>bob</code>.
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>Authentication Status &amp; Protected Dashboard</h3>
+      {% if current_user %}
+        <div class="alert {% if current_user.bypassed %}alert-vuln{% else %}alert-sec{% endif %}">
+          <strong>{% if current_user.bypassed %}AUTHENTICATION BYPASSED!{% else %}AUTHENTICATED SESSION{% endif %}</strong>
+          <div>Logged in as <strong>{{ current_user.full_name }}</strong> (<code>{{ current_user.username }}</code>)</div>
+          <div>Role: <span class="tag tag-theory">{{ current_user.role }}</span> &bull; Dept: {{ current_user.department }}</div>
+        </div>
+        <form method="post" action="/modules/sqli-auth/logout">
+          <button type="submit" class="btn btn-danger btn-sm">Logout &amp; Clear Session</button>
+        </form>
+      {% elif result and not result.authenticated %}
+        <div class="alert alert-sec">
+          <strong>ACCESS DENIED</strong> — Authentication failed cleanly.
+          {% if result.error %}<div style="font-size:12px; margin-top:4px;">SQLite Error: <code>{{ result.error }}</code></div>{% endif %}
+        </div>
+      {% else %}
+        <div class="alert alert-info">
+          Not authenticated. Submit a payload or valid credentials to inspect the SQL query and session state.
+        </div>
+      {% endif %}
+
+      {% if result %}
+        <h3 style="margin-top:14px;">Executed SQL Query Inspection</h3>
+        <pre class="terminal">{{ result.executed_query }}</pre>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Tab 2: Side-by-Side Comparison -->
+<div id="tab-compare" class="tab-panel">
+  <div class="card">
+    <h3>Side-by-Side Comparison (Same Payload in Both Modes)</h3>
+    <div style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
+      <input type="text" id="sqli-cmp-user" value="admin' -- " style="max-width:340px;" />
+      <button type="button" class="btn btn-primary" onclick="runSqliCompare()">Run Side-by-Side Comparison</button>
+    </div>
+    <div id="sqli-compare-out" class="grid-2">
+      <div class="alert alert-info">Click "Run Side-by-Side Comparison" to execute the payload against both implementations simultaneously.</div>
+    </div>
+  </div>
+</div>
+
+{% include "partials/common_sections.html" %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.querySelector('#tab-learning .card:first-child').insertAdjacentHTML('beforeend', `
+  <p style="color:var(--text-secondary);">
+    SQL Injection Authentication Bypass occurs when untrusted user input from a login form is concatenated directly into an SQL query string. Because the SQL engine parses the combined string as a single command, special characters such as single quotes (<code>'</code>), boolean operators (<code>OR '1'='1'</code>), and SQL comment sequences (<code>--</code>) break out of the data literal and alter the query's <code>WHERE</code> clause logic.
+  </p>
+  <p style="color:var(--text-secondary); margin-bottom:0;">
+    In secured mode, <strong>Parameterized Queries</strong> separate SQL syntax from user-supplied values at the database driver level. The query template is compiled first, and the username and password hash are bound strictly as literal scalar data.
+  </p>
+`);
+
+async function runSqliCompare() {
+  const payload = document.getElementById("sqli-cmp-user").value;
+  const fd = new FormData();
+  fd.append("username", payload);
+  fd.append("password", "anything");
+  const res = await fetch("/modules/sqli-auth/compare", { method: "POST", body: fd });
+  const data = await res.json();
+  document.getElementById("sqli-compare-out").innerHTML = `
+    <div class="card" style="border-color: var(--vuln-border);">
+      <span class="tag tag-vuln">VULNERABLE (String Concatenation)</span>
+      <p><strong>Authenticated:</strong> ${data.vulnerable.authenticated ? "YES (BYPASSED)" : "NO"}</p>
+      <p><strong>Matched User:</strong> ${data.vulnerable.user ? data.vulnerable.user.username + " (" + data.vulnerable.user.role + ")" : "None"}</p>
+      <pre class="terminal" style="color:var(--vuln-red);">${data.vulnerable.executed_query}</pre>
+    </div>
+    <div class="card" style="border-color: var(--sec-border);">
+      <span class="tag tag-sec">SECURED (Parameterized Query)</span>
+      <p><strong>Authenticated:</strong> ${data.secured.authenticated ? "YES" : "NO (BLOCKED)"}</p>
+      <p><strong>Matched User:</strong> ${data.secured.user ? data.secured.user.username : "None"}</p>
+      <pre class="terminal">${data.secured.executed_query}</pre>
+    </div>
+  `;
+  labRefreshLogs();
+}
+</script>
+{% endblock %}

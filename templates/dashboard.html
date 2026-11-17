@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}{{ course.project_title }} — Dashboard{% endblock %}
+{% block shell_class %}full-width{% endblock %}
+
+{% block content %}
+<section class="hero-banner">
+  <div class="eyebrow">{{ course.institute }} &bull; {{ course.department }}</div>
+  <h1>{{ course.assignment }}</h1>
+  <p class="subtitle">
+    <strong>Course:</strong> {{ course.course_name }} ({{ course.course_code }}) &bull;
+    <strong>Semester:</strong> {{ course.semester }} &bull;
+    <strong>Instructor:</strong> {{ course.instructor }}
+  </p>
+</section>
+
+<section class="grid-3" style="margin-bottom: 20px;">
+  <div class="card">
+    <div class="eyebrow">Project Overview</div>
+    <h3>Five-Variant Security Lab</h3>
+    <p style="color: var(--text-secondary); margin: 0;">
+      An isolated, localhost-only FastAPI + SQLite workbench built for live academic demonstration, screen recording, and individual viva evaluation across four OWASP vulnerability categories.
+    </p>
+  </div>
+  <div class="card">
+    <div class="eyebrow">Architecture</div>
+    <h3>Dual-Path Execution &amp; Telemetry</h3>
+    <p style="color: var(--text-secondary); margin: 0;">
+      Every module separates its <strong>Vulnerable</strong> and <strong>Secured</strong> code paths, inspects live Python source lines directly from disk, and streams sanitized backend/browser events to a persistent Observation Panel.
+    </p>
+  </div>
+  <div class="card">
+    <div class="eyebrow">Documentation Access</div>
+    <h3>Repository &amp; Viva Docs</h3>
+    <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
+      {% for fname, label in docs.items() %}
+        <a href="/docs/{{ fname }}" class="btn btn-sm">{{ fname }}</a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<h2 style="margin-bottom: 12px;">Vulnerability Modules (5 Group Variants)</h2>
+<section class="grid-2" style="margin-bottom: 24px;">
+  {% for m in members %}
+  <div class="card module-card">
+    <div>
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
+        <span class="tag tag-vuln">{{ m.category }}</span>
+        <span class="tag tag-theory">{{ m.label }}: {{ m.name }} ({{ m.roll_number }})</span>
+      </div>
+      <h3>{{ m.variant }}</h3>
+      <p style="color: var(--text-secondary); margin: 0 0 12px;">{{ m.summary }}</p>
+      <div style="font-size: 12px; color: var(--sec-green); margin-bottom: 14px;">
+        <strong>Implemented Mitigation:</strong> {{ m.implemented_mitigation }}
+      </div>
+    </div>
+    <div>
+      <a href="{{ m.route }}" class="btn btn-primary">Open Module Workspace &rarr;</a>
+    </div>
+  </div>
+  {% endfor %}
+</section>
+
+<section class="card">
+  <div class="eyebrow">Group Ownership Declaration (Table 3)</div>
+  <h2>Individual Module Ownership</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Member</th>
+        <th>Name</th>
+        <th>Roll Number</th>
+        <th>Vulnerability Category</th>
+        <th>Selected Variant</th>
+        <th>Implemented Mitigation</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in members %}
+      <tr>
+        <td><strong>{{ m.label }}</strong></td>
+        <td>{{ m.name }}</td>
+        <td><code>{{ m.roll_number }}</code></td>
+        <td>{{ m.category }}</td>
+        <td><a href="{{ m.route }}">{{ m.variant }}</a></td>
+        <td>{{ m.implemented_mitigation }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

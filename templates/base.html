@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}{{ course.project_title }}{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <script>
+    window.LAB_MODULE_KEY = "{{ module_key }}";
+    window.LAB_CURRENT_MODE = "{{ mode | default('vulnerable') }}";
+
+    // Defined in <head> so inline XSS payloads (onerror/onload) always find it ready
+    window.labXssNotify = function (label) {
+      var esc = function (s) {
+        return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+      };
+      var banner = document.getElementById("xss-exec-banner");
+      if (banner) {
+        banner.style.display = "block";
+        banner.innerHTML = "<strong>Browser JavaScript Executed:</strong> " + esc(label) + " (harmless academic DOM callback triggered).";
+      }
+      if (window.LAB_MODULE_KEY === "xss-reflected" || window.LAB_MODULE_KEY === "xss-stored") {
+        var fd = new FormData();
+        fd.append("payload", label);
+        fd.append("mode", window.LAB_CURRENT_MODE || "vulnerable");
+        fetch("/modules/" + window.LAB_MODULE_KEY + "/browser-event", { method: "POST", body: fd })
+          .then(function () {
+            if (typeof window.labRefreshLogs === "function") {
+              window.labRefreshLogs();
+            }
+          })
+          .catch(function () {});
+      }
+    };
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-badge">IT-30001</span>
+      <span>{{ course.project_title }}</span>
+    </div>
+    <nav class="nav-links">
+      <a href="/" class="nav-link {% if module_key == 'dashboard' %}active{% endif %}">Dashboard</a>
+      <a href="/modules/sqli-auth" class="nav-link {% if module_key == 'sqli-auth' %}active{% endif %}">1. SQLi Bypass</a>
+      <a href="/modules/xss-stored" class="nav-link {% if module_key == 'xss-stored' %}active{% endif %}">2. Stored XSS</a>
+      <a href="/modules/xss-reflected" class="nav-link {% if module_key == 'xss-reflected' %}active{% endif %}">3. Reflected XSS</a>
+      <a href="/modules/cmd-injection" class="nav-link {% if module_key == 'cmd-injection' %}active{% endif %}">4. Cmd Injection</a>
+      <a href="/modules/csrf-get" class="nav-link {% if module_key == 'csrf-get' %}active{% endif %}">5. CSRF (GET)</a>
+      <a href="/docs/README.md" class="nav-link {% if module_key == 'docs' %}active{% endif %}">Docs</a>
+    </nav>
+    <span class="localhost-pill">127.0.0.1 // ISOLATED LAB</span>
+  </header>
+
+  <div class="workspace-shell {% block shell_class %}{% endblock %}">
+    <main class="main-pane">
+      {% block content %}{% endblock %}
+    </main>
+    {% block observation_panel %}
+      {% if module_key not in ('dashboard', 'docs') %}
+        {% include "partials/observation_panel.html" %}
+      {% endif %}
+    {% endblock %}
+  </div>
+
+  <script src="/static/js/app.js"></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

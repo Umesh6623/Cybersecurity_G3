@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Module 3: Reflected XSS — {{ course.project_title }}{% endblock %}
+
+{% block content %}
+<div class="mode-bar">
+  <div>
+    <div class="eyebrow">{{ member.label }} ({{ member.name }} / {{ member.roll_number }}) &bull; {{ member.category }}</div>
+    <h1 style="margin:0;">{{ member.variant }}</h1>
+  </div>
+  <div class="mode-pills">
+    <a href="/modules/xss-reflected?mode=vulnerable{% if query_value %}&q={{ query_value|urlencode }}{% endif %}" class="mode-pill {% if mode == 'vulnerable' %}active-vuln{% endif %}">Vulnerable Mode</a>
+    <a href="/modules/xss-reflected?mode=secured{% if query_value %}&q={{ query_value|urlencode }}{% endif %}" class="mode-pill {% if mode == 'secured' %}active-sec{% endif %}">Secured Mode</a>
+  </div>
+</div>
+
+<p style="color: var(--text-secondary); margin-top:0;">{{ member.summary }}</p>
+
+{% include "partials/module_tabs.html" %}
+
+<!-- Tab 1: Interactive Demo -->
+<div id="tab-demo" class="tab-panel active">
+  <div id="xss-exec-banner" class="alert alert-vuln" style="display:none;"></div>
+
+  <div class="card">
+    <h3>Threat Advisory Search (HTTP GET Reflection)</h3>
+    <div class="payload-chips">
+      {% for ex in example_payloads %}
+        <button type="button" class="payload-chip" onclick='document.getElementById("xss-ref-input").value={{ ex.payload|tojson }};'>
+          {{ ex.label }}
+        </button>
+      {% endfor %}
+    </div>
+    <form method="get" action="/modules/xss-reflected">
+      <input type="hidden" name="mode" value="{{ mode }}" />
+      <div class="form-group">
+        <label for="xss-ref-input">Search Query Parameter (<code>?q=</code>)</label>
+        <input type="text" id="xss-ref-input" name="q" value="{{ query_value }}" placeholder="Enter search term or XSS payload..." />
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button type="submit" class="btn btn-primary">Execute GET Search</button>
+        <button type="button" class="btn" onclick="labResetModule()">Reset Demo</button>
+      </div>
+    </form>
+  </div>
+
+  {% if search_result %}
+  <div class="grid-2">
+    <div class="card">
+      <h3>Rendered Browser Output ({{ mode|upper }})</h3>
+      <div class="alert {% if mode == 'vulnerable' %}alert-vuln{% else %}alert-sec{% endif %}">
+        {{ search_result.rendered_html }}
+      </div>
+      {% if search_result.matches %}
+        <ul style="margin:8px 0 0; padding-left:18px; color:var(--text-secondary);">
+          {% for item in search_result.matches %}
+            <li><strong>{{ item.title }}</strong> ({{ item.tag }}) — {{ item.summary }}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p style="color:var(--text-muted); margin:0;">No advisory entries matched your query.</p>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <h3>HTTP Request &amp; Raw HTML Response Inspection</h3>
+      <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px;">
+        <strong>Request:</strong> <code>GET /modules/xss-reflected?q={{ query_value }}&amp;mode={{ mode }}</code>
+      </div>
+      <pre class="terminal" style="color: {% if mode == 'vulnerable' %}var(--vuln-red){% else %}var(--sec-green){% endif %};">{{ search_result.raw_response_snippet }}</pre>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Tab 2: Side-by-Side Comparison -->
+<div id="tab-compare" class="tab-panel">
+  <div class="card">
+    <h3>Side-by-Side Comparison (Raw Reflection vs. Context-Aware Encoding)</h3>
+    <div style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
+      <input type="text" id="xss-ref-cmp-input" value='<img src="invalid" onerror="window.labXssNotify(\'Reflected XSS\')">' style="max-width:520px;" />
+      <button type="button" class="btn btn-primary" onclick="runReflectedCompare()">Compare Modes</button>
+    </div>
+    <div id="xss-ref-compare-out" class="grid-2">
+      <div class="alert alert-info">Click "Compare Modes" to inspect how the same GET parameter is emitted in Vulnerable vs. Secured mode.</div>
+    </div>
+  </div>
+</div>
+
+{% include "partials/common_sections.html" %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.querySelector('#tab-learning .card:first-child').insertAdjacentHTML('beforeend', `
+  <p style="color:var(--text-secondary);">
+    Reflected XSS occurs when an application reads untrusted input from an HTTP request (such as a <code>GET ?q=</code> query parameter) and embeds it directly into the returned <code>text/html</code> response without context-aware encoding.
+  </p>
+  <p style="color:var(--text-secondary); margin-bottom:0;">
+    Because the browser's HTML parser cannot tell which tags came from the server template versus the user's URL parameter, injected markup such as <code>&lt;script&gt;</code> or <code>&lt;img onerror=...&gt;</code> is parsed into active DOM elements and executed in the victim's origin. <strong>Context-Aware Output Encoding</strong> converts <code>&lt;</code>, <code>&gt;</code>, <code>&amp;</code>, and quotes into inert HTML entities so the browser displays them strictly as text.
+  </p>
+`);
+
+async function runReflectedCompare() {
+  const q = document.getElementById("xss-ref-cmp-input").value;
+  const fd = new FormData();
+  fd.append("q", q);
+  const res = await fetch("/modules/xss-reflected/compare", { method: "POST", body: fd });
+  const data = await res.json();
+  const esc = (s) => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  document.getElementById("xss-ref-compare-out").innerHTML = `
+    <div class="card" style="border-color: var(--vuln-border);">
+      <span class="tag tag-vuln">VULNERABLE (Raw HTML Reflection)</span>
+      <p>Browser parses raw tags &amp; executes JavaScript.</p>
+      <pre class="terminal" style="color:var(--vuln-red);">${esc(data.vulnerable.raw_html)}</pre>
+    </div>
+    <div class="card" style="border-color: var(--sec-border);">
+      <span class="tag tag-sec">SECURED (HTML Entity Encoded)</span>
+      <p>Browser renders escaped entities as safe literal text.</p>
+      <pre class="terminal">${esc(data.secured.raw_html)}</pre>
+    </div>
+  `;
+  labRefreshLogs();
+}
+</script>
+{% endblock %}

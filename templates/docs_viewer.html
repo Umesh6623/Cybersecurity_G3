@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{{ doc_name }} — {{ course.project_title }}{% endblock %}
+{% block shell_class %}full-width{% endblock %}
+
+{% block content %}
+<div class="mode-bar">
+  <div>
+    <div class="eyebrow">Documentation Viewer</div>
+    <h1 style="margin:0;">{{ doc_title }} (<code>{{ doc_name }}</code>)</h1>
+  </div>
+  <div style="display:flex; flex-wrap:wrap; gap:6px;">
+    {% for fname, label in docs.items() %}
+      <a href="/docs/{{ fname }}" class="btn btn-sm {% if fname == doc_name %}btn-primary{% endif %}">{{ fname }}</a>
+    {% endfor %}
+  </div>
+</div>
+
+<article class="card markdown-body" style="padding: 24px 28px;">
+  {{ doc_html | safe }}
+</article>
+{% endblock %}

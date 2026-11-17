@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Module 4: OS Command Injection (In-Band) — {{ course.project_title }}{% endblock %}
+
+{% block content %}
+<div class="mode-bar">
+  <div>
+    <div class="eyebrow">{{ member.label }} ({{ member.name }} / {{ member.roll_number }}) &bull; {{ member.category }}</div>
+    <h1 style="margin:0;">{{ member.variant }}</h1>
+  </div>
+  <div class="mode-pills">
+    <a href="/modules/cmd-injection?mode=vulnerable" class="mode-pill {% if mode == 'vulnerable' %}active-vuln{% endif %}">Vulnerable Mode</a>
+    <a href="/modules/cmd-injection?mode=secured" class="mode-pill {% if mode == 'secured' %}active-sec{% endif %}">Secured Mode</a>
+  </div>
+</div>
+
+<p style="color: var(--text-secondary); margin-top:0;">{{ member.summary }}</p>
+
+{% include "partials/module_tabs.html" %}
+
+<!-- Tab 1: Interactive Demo -->
+<div id="tab-demo" class="tab-panel active">
+  <div class="grid-2">
+    <div class="card">
+      <h3>Local Host Diagnostic Utility ({{ mode|upper }})</h3>
+      <div class="payload-chips">
+        {% for ex in example_payloads %}
+          <button type="button" class="payload-chip" onclick='document.getElementById("cmd-target").value={{ ex.target|tojson }};'>
+            {{ ex.label }}
+          </button>
+        {% endfor %}
+      </div>
+      <form method="post" action="/modules/cmd-injection/run">
+        <input type="hidden" name="mode" value="{{ mode }}" />
+        <div class="form-group">
+          <label for="cmd-target">Target Host / Diagnostic Payload</label>
+          <input type="text" id="cmd-target" name="target" value="{{ submitted_target }}" placeholder="e.g. localhost; id" required />
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button type="submit" class="btn btn-primary">Run Diagnostic</button>
+          <button type="button" class="btn" onclick="labResetModule()">Reset Demo</button>
+        </div>
+      </form>
+      <p style="font-size:12px; color:var(--text-muted); margin-top:12px; margin-bottom:0;">
+        Isolated sandbox guardrail: only harmless local test commands (<code>id</code>, <code>whoami</code>, <code>uname -a</code>, <code>date</code>, <code>pwd</code>, <code>hostname</code>) on <code>localhost</code> / <code>127.0.0.1</code> are permitted.
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>In-Band Command Output &amp; Execution Timeline</h3>
+      {% if result %}
+        <div class="alert {% if result.injected %}alert-vuln{% elif result.status == 'rejected' %}alert-sec{% else %}alert-info{% endif %}">
+          <strong>Status:</strong> <code>{{ result.status }}</code> &bull;
+          <strong>Exit Code:</strong> <code>{{ result.returncode }}</code> &bull;
+          <strong>Duration:</strong> <code>{{ result.duration_ms }} ms</code>
+        </div>
+        <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px;">
+          <strong>Executed Command:</strong> <code>{{ result.command }}</code>
+        </div>
+        {% if result.stdout %}
+          <label>Standard Output (stdout)</label>
+          <pre class="terminal">{{ result.stdout }}</pre>
+        {% endif %}
+        {% if result.stderr %}
+          <label style="margin-top:10px;">Standard Error / Security Block (stderr)</label>
+          <pre class="terminal" style="color:var(--vuln-red);">{{ result.stderr }}</pre>
+        {% endif %}
+      {% else %}
+        <div class="alert alert-info">Submit a target or command-injection payload to observe in-band stdout and execution timing.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Tab 2: Side-by-Side Comparison -->
+<div id="tab-compare" class="tab-panel">
+  <div class="card">
+    <h3>Side-by-Side Comparison (Shell Concatenation vs. Allow-List + Argument Vector)</h3>
+    <div style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
+      <input type="text" id="cmd-cmp-input" value="localhost; id" style="max-width:360px;" />
+      <button type="button" class="btn btn-primary" onclick="runCmdCompare()">Compare Modes</button>
+    </div>
+    <div id="cmd-compare-out" class="grid-2">
+      <div class="alert alert-info">Click "Compare Modes" to run the identical input through both implementations.</div>
+    </div>
+  </div>
+</div>
+
+{% include "partials/common_sections.html" %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.querySelector('#tab-learning .card:first-child').insertAdjacentHTML('beforeend', `
+  <p style="color:var(--text-secondary);">
+    In-Band OS Command Injection occurs when untrusted user input is concatenated into a command string executed by a system shell (<code>shell=True</code>, invoking <code>/bin/sh -c</code>). Shell metacharacters such as <code>;</code>, <code>&amp;&amp;</code>, or <code>|</code> allow an attacker to append arbitrary OS commands whose output is returned directly in the HTTP response.
+  </p>
+  <p style="color:var(--text-secondary); margin-bottom:0;">
+    In secured mode, strict <strong>allow-list validation</strong> rejects any input outside <code>{'localhost', '127.0.0.1'}</code>, and <strong>argument-vector execution</strong> (<code>subprocess.run(['getent', 'hosts', target], shell=False)</code>) bypasses the shell entirely so metacharacters can never be interpreted as command separators.
+  </p>
+`);
+
+async function runCmdCompare() {
+  const target = document.getElementById("cmd-cmp-input").value;
+  const fd = new FormData();
+  fd.append("target", target);
+  const res = await fetch("/modules/cmd-injection/compare", { method: "POST", body: fd });
+  const data = await res.json();
+  document.getElementById("cmd-compare-out").innerHTML = `
+    <div class="card" style="border-color: var(--vuln-border);">
+      <span class="tag tag-vuln">VULNERABLE (shell=True)</span>
+      <p><strong>Injected Executed:</strong> ${data.vulnerable.injected ? "YES (In-Band Output Returned)" : "NO"}</p>
+      <pre class="terminal" style="color:var(--vuln-red);">${data.vulnerable.stdout || data.vulnerable.stderr}</pre>
+    </div>
+    <div class="card" style="border-color: var(--sec-border);">
+      <span class="tag tag-sec">SECURED (Allow-List + shell=False)</span>
+      <p><strong>Status:</strong> ${data.secured.status}</p>
+      <pre class="terminal">${data.secured.stderr || data.secured.stdout}</pre>
+    </div>
+  `;
+  labRefreshLogs();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,87 @@
+<!-- Tab 3: Live Source-Code Inspection -->
+<div id="tab-source" class="tab-panel">
+  <div class="grid-2">
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h3 style="margin:0; color: var(--vuln-red);">Vulnerable Implementation</h3>
+        <span class="tag tag-vuln">{{ source_code.vulnerable.file }} (L{{ source_code.vulnerable.start_line }}–{{ source_code.vulnerable.end_line }})</span>
+      </div>
+      <div class="code-box">
+        {% for line in source_code.vulnerable.lines %}
+          <div class="code-line">
+            <span class="line-num">{{ line.num }}</span>
+            <span class="line-text">{{ line.code }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h3 style="margin:0; color: var(--sec-green);">Secured Implementation</h3>
+        <span class="tag tag-sec">{{ source_code.secured.file }} (L{{ source_code.secured.start_line }}–{{ source_code.secured.end_line }})</span>
+      </div>
+      <div class="code-box">
+        {% for line in source_code.secured.lines %}
+          <div class="code-line">
+            <span class="line-num">{{ line.num }}</span>
+            <span class="line-text">{{ line.code }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tab 4: Root Cause & Alternative Mitigations -->
+<div id="tab-learning" class="tab-panel">
+  <div class="card">
+    <div class="eyebrow">Root Cause Analysis</div>
+    <h3>Why This Vulnerability Occurs</h3>
+    {% block root_cause_body %}{% endblock %}
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">Implemented vs. Theoretical Mitigations (Table 2 Requirement)</div>
+    <h3>Defense Strategies</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Mitigation</th>
+          <th>Status in Lab</th>
+          <th>How It Works</th>
+          <th>Why It Is Effective</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for alt in alternatives %}
+        <tr>
+          <td><strong>{{ alt.name }}</strong></td>
+          <td>
+            {% if alt.status == 'IMPLEMENTED' %}
+              <span class="tag tag-sec">IMPLEMENTED</span>
+            {% else %}
+              <span class="tag tag-theory">THEORETICAL</span>
+            {% endif %}
+          </td>
+          <td>{{ alt.idea }}</td>
+          <td>{{ alt.why_effective }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Tab 5: Viva Preparation -->
+<div id="tab-viva" class="tab-panel">
+  <div class="card">
+    <div class="eyebrow">Individual Viva Preparation</div>
+    <h3>Likely Examiner Questions &amp; Concise Answers</h3>
+    {% for qa in viva_qa %}
+      <div style="padding: 12px 0; border-bottom: 1px solid var(--border-subtle);">
+        <div style="font-weight: 600; color: var(--accent-cyan); margin-bottom: 4px;">Q{{ loop.index }}: {{ qa.q }}</div>
+        <div style="color: var(--text-secondary);">{{ qa.a }}</div>
+      </div>
+    {% endfor %}
+  </div>
+</div>

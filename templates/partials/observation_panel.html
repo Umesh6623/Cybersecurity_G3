@@ -1,0 +1,22 @@
+<aside class="observation-pane" aria-label="Live Execution Observation Panel">
+  <div class="obs-header">
+    <div class="obs-title-row">
+      <div class="obs-title">
+        <span class="live-dot"></span>
+        <span>Live Execution Telemetry</span>
+      </div>
+      <span class="tag tag-theory">{{ module_key }}</span>
+    </div>
+    <div class="obs-actions">
+      <button type="button" class="btn btn-sm" onclick="labRefreshLogs()">Refresh</button>
+      <button type="button" class="btn btn-sm" onclick="labCopyLogs()">Copy Logs</button>
+      <button type="button" class="btn btn-sm" onclick="labClearLogs()">Clear Logs</button>
+      <button type="button" class="btn btn-sm btn-danger" onclick="labResetModule()">Reset Demo</button>
+    </div>
+  </div>
+  <div id="obs-log-feed" class="obs-feed">
+    <div class="alert alert-info" style="font-size:12px;">
+      Loading live telemetry...
+    </div>
+  </div>
+</aside>

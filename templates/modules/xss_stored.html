@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Module 2: Stored XSS — {{ course.project_title }}{% endblock %}
+
+{% block content %}
+<div class="mode-bar">
+  <div>
+    <div class="eyebrow">{{ member.label }} ({{ member.name }} / {{ member.roll_number }}) &bull; {{ member.category }}</div>
+    <h1 style="margin:0;">{{ member.variant }}</h1>
+  </div>
+  <div class="mode-pills">
+    <a href="/modules/xss-stored?mode=vulnerable" class="mode-pill {% if mode == 'vulnerable' %}active-vuln{% endif %}">Vulnerable Mode</a>
+    <a href="/modules/xss-stored?mode=secured" class="mode-pill {% if mode == 'secured' %}active-sec{% endif %}">Secured Mode</a>
+  </div>
+</div>
+
+<p style="color: var(--text-secondary); margin-top:0;">{{ member.summary }}</p>
+
+{% include "partials/module_tabs.html" %}
+
+<!-- Tab 1: Interactive Demo -->
+<div id="tab-demo" class="tab-panel active">
+  <div id="xss-exec-banner" class="alert alert-vuln" style="display:none;"></div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>Post to Security Advisory Board (Persisted in SQLite)</h3>
+      <div class="payload-chips">
+        {% for ex in example_payloads %}
+          <button type="button" class="payload-chip"
+            onclick='document.getElementById("xss-st-title").value={{ ex.title|tojson }}; document.getElementById("xss-st-content").value={{ ex.content|tojson }};'>
+            {{ ex.label }}
+          </button>
+        {% endfor %}
+      </div>
+      <form method="post" action="/modules/xss-stored/submit">
+        <input type="hidden" name="mode" value="{{ mode }}" />
+        <div class="form-group">
+          <label for="xss-st-author">Author</label>
+          <input type="text" id="xss-st-author" name="author" value="Student Demo" required />
+        </div>
+        <div class="form-group">
+          <label for="xss-st-title">Post Title</label>
+          <input type="text" id="xss-st-title" name="title" value="Lab Observation" required />
+        </div>
+        <div class="form-group">
+          <label for="xss-st-content">Comment Body / Payload</label>
+          <textarea id="xss-st-content" name="content" rows="3" placeholder="Enter comment or persistent XSS payload..." required></textarea>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button type="submit" class="btn btn-primary">Submit &amp; Store in DB</button>
+          <button type="button" class="btn" onclick="window.location.reload()">Refresh Page (Verify Persistence)</button>
+          <button type="button" class="btn btn-danger" onclick="labResetModule()">Clear Demo Data</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>Persisted Discussion Feed ({{ mode|upper }} Render)</h3>
+      {% for c in comments %}
+        <div style="padding:10px 12px; background:var(--bg-code); border:1px solid var(--border-subtle); border-radius:8px; margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; font-size:11.5px; color:var(--text-muted); margin-bottom:4px;">
+            <span><strong>{{ c.author }}</strong></span>
+            <span>{{ c.created_at }}</span>
+          </div>
+          <div style="font-weight:600; margin-bottom:4px;">{{ c.rendered_title }}</div>
+          <div style="color:var(--text-secondary);">{{ c.rendered_content }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Tab 2: Side-by-Side Comparison -->
+<div id="tab-compare" class="tab-panel">
+  <div class="card">
+    <h3>Side-by-Side Comparison (Unescaped Stored Render vs. HTML-Escaped Render)</h3>
+    <div style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
+      <input type="text" id="xss-st-cmp-input" value='<img src="x" onerror="window.labXssNotify(\'Stored XSS\')">' style="max-width:520px;" />
+      <button type="button" class="btn btn-primary" onclick="runStoredCompare()">Compare Modes</button>
+    </div>
+    <div id="xss-st-compare-out" class="grid-2">
+      <div class="alert alert-info">Click "Compare Modes" to compare how persisted database content is rendered in both modes.</div>
+    </div>
+  </div>
+</div>
+
+{% include "partials/common_sections.html" %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.querySelector('#tab-learning .card:first-child').insertAdjacentHTML('beforeend', `
+  <p style="color:var(--text-secondary);">
+    Stored (Persistent) XSS occurs when an application saves untrusted user input in a database (such as a comment or review) and later renders that stored content into HTML pages without context-aware output encoding.
+  </p>
+  <p style="color:var(--text-secondary); margin-bottom:0;">
+    <strong>How Stored XSS differs from Reflected XSS:</strong> Reflected XSS requires tricking a victim into clicking a crafted link containing the payload in a single request. Stored XSS persists inside the server's database and executes automatically in the browser of <em>every</em> user who visits or refreshes the page.
+  </p>
+`);
+
+async function runStoredCompare() {
+  const content = document.getElementById("xss-st-cmp-input").value;
+  const fd = new FormData();
+  fd.append("content", content);
+  const res = await fetch("/modules/xss-stored/compare", { method: "POST", body: fd });
+  const data = await res.json();
+  const esc = (s) => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  document.getElementById("xss-st-compare-out").innerHTML = `
+    <div class="card" style="border-color: var(--vuln-border);">
+      <span class="tag tag-vuln">VULNERABLE (Unescaped DB Render)</span>
+      <p>Stored payload executes on every page load.</p>
+      <pre class="terminal" style="color:var(--vuln-red);">${esc(data.vulnerable.raw_html)}</pre>
+    </div>
+    <div class="card" style="border-color: var(--sec-border);">
+      <span class="tag tag-sec">SECURED (Escaped on Render)</span>
+      <p>Stored payload is encoded and shown as harmless text.</p>
+      <pre class="terminal">${esc(data.secured.raw_html)}</pre>
+    </div>
+  `;
+  labRefreshLogs();
+}
+</script>
+{% endblock %}
