@@ -1,4 +1,4 @@
-"""Module 2 (Member 2): Cross-Site Scripting (XSS) — Stored XSS."""
+"""Module 2 (Member 3): Cross-Site Scripting (XSS) — Stored XSS."""
 
 from datetime import datetime
 from typing import Any, Dict, List
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/modules/xss-stored", tags=["Module 2: Stored XSS"])
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 MODULE_KEY = "xss-stored"
-MEMBER_INFO = GROUP_MEMBERS[1]
+MEMBER_INFO = GROUP_MEMBERS[2]
 
 EXAMPLE_PAYLOADS = [
     {

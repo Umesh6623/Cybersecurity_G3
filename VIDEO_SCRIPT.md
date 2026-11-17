@@ -8,20 +8,20 @@
 5. **Mitigation:** Switch to *Secured Mode*, submit the exact same `admin' -- ` payload, and show `ACCESS DENIED` + `MITIGATION_BLOCKED`.
 6. **Theory:** Briefly summarize Allow-List Validation, Least-Privilege DB Accounts, and Safe Error Handling.
 
-## Member 2 — Milan (IIT2024053): Stored XSS [~2.5 min]
-1. **Intro:** State name, roll number, and variant (Stored XSS).
-2. **Vulnerable Code:** Show `render_comments_vulnerable()` rendering SQLite rows via `Markup()`.
-3. **Exploit:** Submit the persistent `<img>` payload, then click **Refresh Page** to prove persistence from SQLite.
-4. **Root Cause & Difference:** Contrast Stored XSS (persisted in DB, affects every visitor) with Reflected XSS (single request/response).
-5. **Mitigation:** Switch to *Secured Mode* and refresh; show the stored payload rendered safely as text. Click **Clear Demo Data**.
-6. **Theory:** Summarize the XSS defense alternatives.
-
-## Member 3 — Umesh (IIT2024080): Reflected XSS [~2.5 min]
+## Member 2 — Milan (IIT2024053): Reflected XSS [~2.5 min]
 1. **Intro:** State name, roll number, and variant (Reflected XSS).
 2. **Vulnerable Code:** Show `render_search_vulnerable()` using `Markup()` without escaping.
 3. **Exploit:** Submit `<img src="invalid" onerror="window.labXssNotify('Reflected XSS Executed!')">` via `GET` in *Vulnerable Mode*. Show the execution banner and `BROWSER_EXEC` log.
 4. **Root Cause:** Explain why unescaped `GET` input in `text/html` is parsed as active DOM markup.
 5. **Mitigation:** Switch to *Secured Mode* with the same payload; show it rendered literally as text (`MITIGATION_BLOCKED`).
+6. **Theory:** Summarize the XSS defense alternatives.
+
+## Member 3 — Umesh (IIT2024080): Stored XSS [~2.5 min]
+1. **Intro:** State name, roll number, and variant (Stored XSS).
+2. **Vulnerable Code:** Show `render_comments_vulnerable()` rendering SQLite rows via `Markup()`.
+3. **Exploit:** Submit the persistent `<img>` payload, then click **Refresh Page** to prove persistence from SQLite.
+4. **Root Cause & Difference:** Contrast Stored XSS (persisted in DB, affects every visitor) with Reflected XSS (single request/response).
+5. **Mitigation:** Switch to *Secured Mode* and refresh; show the stored payload rendered safely as text. Click **Clear Demo Data**.
 6. **Theory:** Summarize Framework Auto-Escaping, HTML Sanitization, CSP, HttpOnly Cookies, and Safe DOM Sinks.
 
 ## Member 4 — Pranav (IIT2024048): OS Command Injection (In-Band) [~2.5 min]

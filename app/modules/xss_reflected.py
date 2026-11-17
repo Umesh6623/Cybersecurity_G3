@@ -1,4 +1,4 @@
-"""Module 3 (Member 3): Cross-Site Scripting (XSS) — Reflected XSS."""
+"""Module 3 (Member 2): Cross-Site Scripting (XSS) — Reflected XSS."""
 
 from typing import Any, Dict
 from fastapi import APIRouter, Form, Request
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/modules/xss-reflected", tags=["Module 3: Reflected X
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 MODULE_KEY = "xss-reflected"
-MEMBER_INFO = GROUP_MEMBERS[2]
+MEMBER_INFO = GROUP_MEMBERS[1]
 
 EXAMPLE_PAYLOADS = [
     {
